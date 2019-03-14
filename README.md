@@ -22,3 +22,13 @@ pip install pydriller
 #postgres
 pip install psycopg2
 
+#comando de git para patch
+git format-patch -1 --stdout > a.patch
+
+#limpiar dir
+git clean -fdx
+git reset hard
+
+#volver a master branch
+git reset hard @{u}
+
