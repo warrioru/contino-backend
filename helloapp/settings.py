@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'howdy',
     'rest_framework',
     'api',
+    'git',
+    'pydriller'
 ]
 #'django.middleware.csrf.CsrfViewMiddleware',
 MIDDLEWARE = [
@@ -74,11 +76,17 @@ WSGI_APPLICATION = 'helloapp.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
+#
+#'NAME': 'projects',
+# 'USER': 'postgres',
+# 'PASSWORD': '123456',
+# 'HOST': '127.0.0.1',
+# 'PORT': '5432',
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3')
     }
 }
 

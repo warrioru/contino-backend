@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Bucketlist
+from .models import Bucketlist, Project
 
 
 class BucketlistSerializer(serializers.ModelSerializer):
@@ -10,3 +10,9 @@ class BucketlistSerializer(serializers.ModelSerializer):
         model = Bucketlist
         fields = ('id', 'name', 'date_created', 'date_modified')
         read_only_fields = ('date_created', 'date_modified')
+
+class ProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ('id', 'name', 'git_url', 'master_branch', 'project_dir', 'branches')
+        read_only_fields = ('project_dir', 'branches')
