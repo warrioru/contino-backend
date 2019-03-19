@@ -5,6 +5,7 @@ from .forms import PatchForm
 from git import *
 from pydriller import RepositoryMining
 from api.models import Project
+import pickle
 import os
 
 # Create your views here.
@@ -15,6 +16,7 @@ class HomePageView(TemplateView):
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
+        #repo1 = pickle.loads(request.body) TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
         patch = request.FILES['patch']
         name = request.POST['name']
         message = applyPatchToLocalRepo(name, patch)
