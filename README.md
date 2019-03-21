@@ -27,8 +27,11 @@ git format-patch -1 --stdout > a.patch
 
 #limpiar dir
 git clean -fdx
-git reset hard
+git reset --hard
 
 #volver a master branch
-git reset hard @{u}
+git reset --hard @{u}
+
+#API conexion a Github
+pip install PyGithub
 

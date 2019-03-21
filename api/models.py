@@ -12,7 +12,8 @@ class Bucketlist(models.Model):
         return "{}".format(self.name)
 
 class Project(models.Model):
-    name = models.CharField(max_length=255, unique=True)
+    project_name = models.CharField(max_length=255)
+    owner = models.CharField(max_length=255, default='')
     git_url = models.CharField(max_length=255, unique=True)
     project_dir = models.CharField(max_length=255)
     master_branch = models.CharField(max_length=255)

@@ -14,5 +14,5 @@ class BucketlistSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ('id', 'name', 'git_url', 'master_branch', 'project_dir', 'branches')
-        read_only_fields = ('project_dir', 'branches')
+        fields = ('id', 'project_name', 'owner', 'git_url', 'master_branch', 'project_dir', 'branches')
+        read_only_fields = ('project_name', 'owner', 'project_dir', 'branches')

@@ -4,6 +4,7 @@ from .serializers import BucketlistSerializer, ProjectSerializer
 from .models import Bucketlist, Project
 from pydriller import *
 from git import *
+import re
 
 
 class CreateView(generics.ListCreateAPIView):
@@ -42,7 +43,6 @@ class DetailsViewProject(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProjectSerializer
 
 def create_repo(serializer):
-    name = serializer['name'].value
     url = serializer['git_url'].value
     id = serializer['id'].value
     #print(temp_repo.remotes.origin.refs[2])
@@ -50,14 +50,17 @@ def create_repo(serializer):
 
 
     try:
+        result = re.search('github.com/(.*)/',url)
+        owner = result.group(1)
+        result = re.search(owner + '/(.*).git',url)
+        name = result.group(1)
         projectDir = './gitProjects/' + name + '/'
         temp_repo = Repo.clone_from(url, projectDir)
-        #temp_repo = Repo('./gitProjects/788888')
         branches = []
         for branch in temp_repo.remotes.origin.refs:
             branches.append(branch)
         myString = ",".join([str(i) for i in branches])
-        Project.objects.filter(git_url = url).update(branches=myString, project_dir=projectDir)
+        Project.objects.filter(git_url = url).update(owner=owner, project_name=name, branches=myString, project_dir=projectDir)
         return myString
 
         #return myString
