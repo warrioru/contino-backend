@@ -159,6 +159,7 @@ def applyPatchToPullRequests(url, patch):
                 os.remove(path)
                 counter = counter + 1
 
+        #run this code only if there are pull requests found
         if (counter > 1) and (not skip):
             conflict = applyPatchToLocalRepo(project.git_url, patch, 0)
             if conflict:
