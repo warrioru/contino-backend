@@ -7,6 +7,7 @@ Installation
 virtualenv -p /usr/bin/python3 env
 source env/bin/activate
 pip install Django
+pip install djangorestframework
 
 ##para modificar schema
 python manage.py makemigrations

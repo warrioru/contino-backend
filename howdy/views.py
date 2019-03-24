@@ -8,13 +8,13 @@ from pydriller import RepositoryMining
 from api.models import Project
 import pickle
 import os
+import errno
 import urllib.request
 import traceback
 
 # Create your views here.
 class HomePageView(TemplateView):
     def get(self, request, **kwargs):
-        repo = Repo('/home/nicolas/Nicolas/UZH/HS19/master project/git repos/git-history')
         #printRepo(repo)
         return render(request, 'index.html', context=None)
 
@@ -22,18 +22,16 @@ class HomePageView(TemplateView):
         #repo1 = pickle.loads(request.body) TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
         patch = request.FILES.get('patch', False)
         url = request.POST['git_url']
+        commitId = request.POST['commitId']
+        parentBranch = request.POST['parentBranch']
+        currentBranch = request.POST['currentBranch']
+        userEmail = request.POST['userEmail']
+
         if patch:
-            message = applyPatchToPullRequests(url, patch)
+            message = applyPatchToLocalRepo(url, patch, parentBranch, currentBranch, userEmail, commitId)
             return JsonResponse({'message': message})
         else:
             return JsonResponse({'message': 'Missing patch file'})
-        #message = applyPatchToLocalRepo(url, patch, 0)
-
-        #repo = RepositoryMining('/home/nicolas/Nicolas/UZH/HS19/master project/git repos/git-history')
-        #branches = printRepo(repo)
-
-        #return render(request, 'index.html', {'name': name, 'message': message,
-        #                                      'branches': branches})
 
 # Add this view
 class AboutPageView(TemplateView):
@@ -46,7 +44,7 @@ def printRepo(repo):
 
     return repo.branches
 
-def applyPatchToLocalRepo(url, patch, pullRequest):
+def applyPatchToLocalRepo(url, patch, parentBranch, currentBranch, userEmail, commitId):
     #based on the name, get the local repo
     conflict = 0
     #patch1 = patch.replace('\n','').replace('-', ' ')
@@ -54,18 +52,23 @@ def applyPatchToLocalRepo(url, patch, pullRequest):
         project = Project.objects.get(git_url = url)
         master_branch = project.master_branch
         project_dir = project.project_dir
-        print(master_branch)
+        project_name = project.project_name
+
         repo = Repo(project_dir)
-        repo.git.checkout(str(master_branch))
-        repo.git.pull()
+        try:
+            repo.git.checkout(userEmail + "/" + currentBranch)
+            print("checkout " + userEmail + "/" + currentBranch)
+        except GitCommandError:
+            #no branch found with that name, create branch
+            repo.git.checkout(parentBranch)
+            repo.git.pull()
+            repo.git.checkout(['-b', userEmail + "/" + currentBranch])
+            print("new branch " + currentBranch)
+
         #create a file with the patch
-        if not pullRequest:
-            handle_uploaded_file(patch)
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "../temp.patch")
-        else:
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "../PR" + str(pullRequest) + ".patch")
+        handle_uploaded_file(patch, project_name, commitId)
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "../patches/" + project_name + "/" + str(commitId) + ".patch")
 
         print("using file: " + path)
         try:
@@ -78,12 +81,38 @@ def applyPatchToLocalRepo(url, patch, pullRequest):
             conflict = 1
             #messageToReturn = 'Merge conflict found' + str(e.stderr)
 
-        if not pullRequest:
-            os.remove(path)
-
         return conflict
 
     except Exception as e:
+        print(e)
+
+
+def handle_uploaded_file(f, project_name, commitId):
+    path = "patches/" + project_name + "/" + str(commitId) + ".patch"
+    if not os.path.exists(os.path.dirname(path)):
+        try:
+            original_umask = os.umask(0)
+            os.makedirs(os.path.dirname(path))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+        finally:
+            os.umask(original_umask)
+
+    with open(path, 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
+
+def clean_git_repo(url):
+    try:
+        project = Project.objects.get(git_url = url)
+        project_dir = project.project_dir
+        repo = Repo(project_dir)
+        repo.git.clean('-fdx')
+        repo.git.reset('--hard')
+        print('Cleaning repo')
+
+    except GitCommandError as e:
         print(e)
 
 def applyPatchToPullRequests(url, patch):
@@ -174,21 +203,3 @@ def applyPatchToPullRequests(url, patch):
         print(traceback.format_exc())
 
     return messageToReturn
-
-
-def handle_uploaded_file(f):
-    with open('temp.patch', 'wb+') as destination:
-        for chunk in f.chunks():
-            destination.write(chunk)
-
-def clean_git_repo(url):
-    try:
-        project = Project.objects.get(git_url = url)
-        project_dir = project.project_dir
-        repo = Repo(project_dir)
-        repo.git.clean('-fdx')
-        repo.git.reset('--hard')
-        print('Cleaning repo')
-
-    except GitCommandError as e:
-        print(e)
