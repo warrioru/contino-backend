@@ -14,21 +14,30 @@ import traceback
 
 # Create your views here.
 class HomePageView(TemplateView):
+    patch = None
+    url = None
+    parentCommitId = None
+    commitId = None
+    parentBranch = None
+    currentBranch = None
+    userEmail = None
+
     def get(self, request, **kwargs):
         #printRepo(repo)
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
         #repo1 = pickle.loads(request.body) TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
-        patch = request.FILES.get('patch', False)
-        url = request.POST['git_url']
-        commitId = request.POST['commitId']
-        parentBranch = request.POST['parentBranch']
-        currentBranch = request.POST['currentBranch']
-        userEmail = request.POST['userEmail']
+        self.patch = request.POST['patch']
+        self.url = request.POST['remote_url']
+        self.parentCommitId = request.POST['parent_commit_id']
+        self.commitId = request.POST['commit_id']
+        self.parentBranch = request.POST['parent_branch']
+        self.currentBranch = request.POST['current_branch']
+        self.userEmail = request.POST['username']
 
-        if patch:
-            message = applyPatchToLocalRepo(url, patch, parentBranch, currentBranch, userEmail, commitId)
+        if self.patch:
+            message = applyPatchToLocalRepo(self) # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
             return JsonResponse({'message': message})
         else:
             return JsonResponse({'message': 'Missing patch file'})
@@ -44,41 +53,40 @@ def printRepo(repo):
 
     return repo.branches
 
-def applyPatchToLocalRepo(url, patch, parentBranch, currentBranch, userEmail, commitId):
+def applyPatchToLocalRepo(commit):
     #based on the name, get the local repo
-    conflict = 0
+    conflict = False
     #patch1 = patch.replace('\n','').replace('-', ' ')
     try:
-        project = Project.objects.get(git_url = url)
-        master_branch = project.master_branch
+        project = Project.objects.get(git_url = commit.url)
+        #master_branch = project.master_branch
         project_dir = project.project_dir
-        project_name = project.project_name
+        project_name = project.project_name #esto ya no se usa? de la linea 61 a la 64
 
-        repo = Repo(project_dir)
+        repo = Repo(project_dir) #TODO:use a new dir if project doesnt exist and init repo or clone avoid github
         try:
-            repo.git.checkout(userEmail + "/" + currentBranch)
-            print("checkout " + userEmail + "/" + currentBranch)
+            repo.git.checkout(commit.userEmail + "/" + commit.currentBranch)
+            print("checkout " + commit.userEmail + "/" + commit.currentBranch)
         except GitCommandError:
             #no branch found with that name, create branch
-            repo.git.checkout(parentBranch)
+            repo.git.checkout(commit.parentBranch)
             repo.git.pull()
-            repo.git.checkout(['-b', userEmail + "/" + currentBranch])
-            print("new branch " + currentBranch)
-
-        #create a file with the patch
-        handle_uploaded_file(patch, project_name, commitId)
+            repo.git.checkout(['-b', commit.userEmail + "/" + commit.currentBranch])
+            print("new branch " + commit.currentBranch)
+        #create a file with the patch TODO:esto debe ser otra funcion dentro de la clase de arriba en caso de que falle.
+        handle_uploaded_file(commit.patch, project_name, commit.commitId)
         my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "../patches/" + project_name + "/" + str(commitId) + ".patch")
+        path = os.path.join(my_path, "../patches/" + project_name + "/" + str(commit.commitId) + ".patch")
 
         print("using file: " + path)
         try:
-            repo.git.apply(['-3', path])
-
-            print('No merge conflicts with ' + master_branch)
+            repo.git.apply(commit.patch)
+            #repo.git.apply(['-3', path])
+            print('No merge conflicts with ' + commit.parentBranch)
         except GitCommandError as e:
             #print(e)
             print('Merge conflict found' + str(e.stderr))
-            conflict = 1
+            conflict = True
             #messageToReturn = 'Merge conflict found' + str(e.stderr)
 
         return conflict
