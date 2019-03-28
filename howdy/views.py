@@ -37,10 +37,65 @@ class HomePageView(TemplateView):
         self.userEmail = request.POST['username']
 
         if self.patch:
-            message = applyPatchToLocalRepo(self) # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
+            message = self.applyPatchToLocalRepo() # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
             return JsonResponse({'message': message})
         else:
             return JsonResponse({'message': 'Missing patch file'})
+
+    def applyPatchToLocalRepo(self):
+        #based on the name, get the local repo
+        conflict = False
+        #patch1 = patch.replace('\n','').replace('-', ' ')
+        try:
+            project = Project.objects.get(git_url = self.url)
+            #master_branch = project.master_branch
+            project_dir = project.project_dir
+            project_name = project.project_name #esto ya no se usa? de la linea 61 a la 64
+
+            repo = Repo(project_dir)
+            user_branch = self.userEmail + "/" + self.currentBranch
+            try:
+                repo.git.checkout(user_branch)
+                print("checkout " + user_branch)
+            except GitCommandError:
+                #no branch found with that name, create branch
+                repo.git.checkout(self.parentBranch)
+                repo.git.pull()
+                repo.git.checkout(['-b', user_branch])
+                print("new branch " + user_branch)
+            #create a file with the patch TODO:esto debe ser otra funcion dentro de la clase de arriba en caso de que falle.
+            handle_uploaded_file(self.patch, project_name, self.commitId)
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "../patches/" + project_name + "/" + str(self.commitId) + ".patch")
+
+            print("using file: " + path)
+            try:
+                #repo.git.apply(['-3', path])
+                print('No merge conflicts with ' + self.parentBranch)
+            except GitCommandError as e:
+                #print(e)
+                print('Merge conflict found' + str(e.stderr))
+                conflict = True
+                #messageToReturn = 'Merge conflict found' + str(e.stderr)
+
+            local_branches = repo.branches
+            for branch in local_branches:
+                repo.git.checkout(branch.name)
+                try:
+                    repo.git.merge(user_branch)
+                except GitCommandError:
+                    #si hay error, hubo merge conflict
+                    print('error')
+
+                repo.git.clean('-fdx')
+                repo.git.reset('--hard')
+
+
+
+            return conflict
+
+        except Exception as e:
+            print(e)
 
 # Add this view
 class AboutPageView(TemplateView):
@@ -53,46 +108,6 @@ def printRepo(repo):
 
     return repo.branches
 
-def applyPatchToLocalRepo(commit):
-    #based on the name, get the local repo
-    conflict = False
-    #patch1 = patch.replace('\n','').replace('-', ' ')
-    try:
-        project = Project.objects.get(git_url = commit.url)
-        #master_branch = project.master_branch
-        project_dir = project.project_dir
-        project_name = project.project_name #esto ya no se usa? de la linea 61 a la 64
-
-        repo = Repo(project_dir) #TODO:use a new dir if project doesnt exist and init repo or clone avoid github
-        try:
-            repo.git.checkout(commit.userEmail + "/" + commit.currentBranch)
-            print("checkout " + commit.userEmail + "/" + commit.currentBranch)
-        except GitCommandError:
-            #no branch found with that name, create branch
-            repo.git.checkout(commit.parentBranch)
-            repo.git.pull()
-            repo.git.checkout(['-b', commit.userEmail + "/" + commit.currentBranch])
-            print("new branch " + commit.currentBranch)
-        #create a file with the patch TODO:esto debe ser otra funcion dentro de la clase de arriba en caso de que falle.
-        handle_uploaded_file(commit.patch, project_name, commit.commitId)
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "../patches/" + project_name + "/" + str(commit.commitId) + ".patch")
-
-        print("using file: " + path)
-        try:
-            repo.git.apply(commit.patch)
-            #repo.git.apply(['-3', path])
-            print('No merge conflicts with ' + commit.parentBranch)
-        except GitCommandError as e:
-            #print(e)
-            print('Merge conflict found' + str(e.stderr))
-            conflict = True
-            #messageToReturn = 'Merge conflict found' + str(e.stderr)
-
-        return conflict
-
-    except Exception as e:
-        print(e)
 
 
 def handle_uploaded_file(f, project_name, commitId):
@@ -107,9 +122,11 @@ def handle_uploaded_file(f, project_name, commitId):
         finally:
             os.umask(original_umask)
 
-    with open(path, 'wb+') as destination:
-        for chunk in f.chunks():
-            destination.write(chunk)
+    #with open(path, 'wb+') as destination:
+    #    for chunk in f.chunks():
+    #        destination.write(chunk)
+    with open(path, 'w') as destination:
+        destination.write(f)
 
 def clean_git_repo(url):
     try:
