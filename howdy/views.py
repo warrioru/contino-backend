@@ -6,6 +6,7 @@ from git import *
 from github import Github
 from pydriller import RepositoryMining
 from api.models import Project
+from howdy.models import Commit, MergeConflicts
 import pickle
 import os
 import errno
@@ -21,6 +22,10 @@ class HomePageView(TemplateView):
     parentBranch = None
     currentBranch = None
     userEmail = None
+    pathToPatch = None
+    project = None
+    projectDir = None
+    projectName = None
 
     def get(self, request, **kwargs):
         #printRepo(repo)
@@ -37,15 +42,34 @@ class HomePageView(TemplateView):
         self.userEmail = request.POST['username']
 
         if self.patch:
-            message = self.applyPatchToLocalRepo() # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
-            return JsonResponse({'message': message})
+            self.createPatchFile()
+            self.saveCommitInfo()
+            #message = self.applyPatchToLocalRepo() # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
+            #return JsonResponse({'message': message})
         else:
             return JsonResponse({'message': 'Missing patch file'})
+
+    def createPatchFile(self):
+        #create a file with the patch TODO:esto debe ser otra funcion dentro de la clase de arriba en caso de que falle.
+        self.project = Project.objects.get(git_url = self.url)
+        self.projectDir = self.project.project_dir
+        self.projectName = self.project.project_name
+
+        handle_uploaded_file(self.patch, self.projectName, self.commitId)
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "../patches/" + self.projectName + "/" + str(self.commitId) + ".patch")
+        self.pathToPatch = path
+
+    def saveCommitInfo(self):
+        commit = Commit(commitId = self.commitId, branchName = self.currentBranch, userEmail = self.userEmail, pathToPatch = self.pathToPatch)
+        commit.save()
+
 
     def applyPatchToLocalRepo(self):
         #based on the name, get the local repo
         conflict = False
         #patch1 = patch.replace('\n','').replace('-', ' ')
+
         try:
             project = Project.objects.get(git_url = self.url)
             #master_branch = project.master_branch
@@ -63,10 +87,6 @@ class HomePageView(TemplateView):
                 repo.git.pull()
                 repo.git.checkout(['-b', user_branch])
                 print("new branch " + user_branch)
-            #create a file with the patch TODO:esto debe ser otra funcion dentro de la clase de arriba en caso de que falle.
-            handle_uploaded_file(self.patch, project_name, self.commitId)
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "../patches/" + project_name + "/" + str(self.commitId) + ".patch")
 
             print("using file: " + path)
             try:
