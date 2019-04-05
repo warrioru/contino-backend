@@ -26,13 +26,14 @@ class HomePageView(TemplateView):
     project = None
     projectDir = None
     projectName = None
+    remoteRepo = None
 
     def get(self, request, **kwargs):
         #printRepo(repo)
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
-        #repo1 = pickle.loads(request.body) TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
+        self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
         self.patch = request.POST['patch']
         self.url = request.POST['remote_url']
         self.parentCommitId = request.POST['parent_commit_id']
