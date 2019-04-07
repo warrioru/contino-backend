@@ -44,8 +44,8 @@ class HomePageView(TemplateView):
 
     def post(self, request, **kwargs):
         #self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
-        self.patch = request.FILES.get('patch', False)
-        #self.patch = request.POST['patch']
+        #self.patch = request.FILES.get('patch', False)
+        self.patch = request.POST['patch'].decode()
         self.url = request.POST['remote_url']
         self.parentCommitId = request.POST['parent_commit_id']
         self.commitId = request.POST['commit_id']
@@ -185,11 +185,11 @@ def handle_uploaded_file(f, project_name, commitId):
         finally:
             os.umask(original_umask)
 
-    with open(path, 'wb+') as destination:
-        for chunk in f.chunks():
-            destination.write(chunk)
-    #with open(path, 'w') as destination:
-    #    destination.write(f)
+    #with open(path, 'wb+') as destination:
+    #    for chunk in f.chunks():
+    #        destination.write(chunk)
+    with open(path, 'w') as destination:
+        destination.write(f)
 
 def clean_git_repo(url):
     try:
