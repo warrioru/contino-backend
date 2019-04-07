@@ -27,11 +27,16 @@ class HomePageView(TemplateView):
     parentBranch = None
     currentBranch = None
     userEmail = None
+    username = None
     pathToPatch = None
     project = None
     projectDir = None
     projectName = None
     remoteRepo = None
+    messageRaw = None
+    time = None
+    offset = None
+
 
     def get(self, request, **kwargs):
         #printRepo(repo)
@@ -48,6 +53,9 @@ class HomePageView(TemplateView):
         self.currentBranch = request.POST['current_branch']
         self.userEmail = request.POST['email']
         self.username = request.POST['username']
+        self.messageRaw = request.POST['message']
+        self.time = request.POST['time']
+        self.offset = request.POST['offset']
 
         if self.patch:
             self.createPatchFile()
@@ -94,9 +102,9 @@ class HomePageView(TemplateView):
             try:
                 repo.git.apply(["--ignore-space-change", "--ignore-whitespace", self.pathToPatch])
                 repo.git.add('*')
-                author = Actor("Nicolas Gordillo", "nicolas.gordillo@swisscom.com")
+                author = Actor(self.username, self.userEmail)
                 skip = b'\x0a'.decode("utf-8")
-                commitMessage = "q" + skip
+                commitMessage = self.messageRaw + skip
 
                 tree = repo.index.write_tree()
                 parents = [ repo.head.commit ]
@@ -105,8 +113,8 @@ class HomePageView(TemplateView):
                 cr = repo.config_reader()
 
                 # Custom Date
-                time = 1554542401
-                offset = -7200
+                time = self.time
+                offset = self.offset
                 author_time, author_offset = time, offset
                 committer_time, committer_offset = time, offset
 
