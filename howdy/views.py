@@ -54,8 +54,8 @@ class HomePageView(TemplateView):
         self.userEmail = request.POST['email']
         self.username = request.POST['username']
         self.messageRaw = request.POST['message']
-        self.time = request.POST['time']
-        self.offset = request.POST['offset']
+        self.time = str(request.POST['time'])
+        self.offset = str(request.POST['offset'])
 
         if self.patch:
             self.createPatchFile()
