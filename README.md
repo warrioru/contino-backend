@@ -36,3 +36,6 @@ git reset --hard @{u}
 #API conexion a Github
 pip install PyGithub
 
+#comando para ver q hay en el hash id
+(printf "commit %s\0" $(git cat-file commit HEAD | wc -c); git cat-file commit HEAD)
+

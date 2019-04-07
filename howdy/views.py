@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from .forms import PatchForm
+from git import Commit as CommitGit
 from git import *
 from github import Github
 from pydriller import RepositoryMining
@@ -12,6 +13,10 @@ import os
 import errno
 import urllib.request
 import traceback
+from time import (time, altzone)
+import datetime
+from io import BytesIO
+from gitdb import *
 
 # Create your views here.
 class HomePageView(TemplateView):
@@ -33,20 +38,22 @@ class HomePageView(TemplateView):
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
-        self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
-        self.patch = request.POST['patch']
+        #self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
+        self.patch = request.FILES.get('patch', False)
+        #self.patch = request.POST['patch']
         self.url = request.POST['remote_url']
         self.parentCommitId = request.POST['parent_commit_id']
         self.commitId = request.POST['commit_id']
         self.parentBranch = request.POST['parent_branch']
         self.currentBranch = request.POST['current_branch']
-        self.userEmail = request.POST['username']
+        self.userEmail = request.POST['email']
+        self.username = request.POST['username']
 
         if self.patch:
             self.createPatchFile()
             self.saveCommitInfo()
-            #message = self.applyPatchToLocalRepo() # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
-            #return JsonResponse({'message': message})
+            message = self.applyPatchToLocalRepo() # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
+            return JsonResponse({'message': message})
         else:
             return JsonResponse({'message': 'Missing patch file'})
 
@@ -72,12 +79,7 @@ class HomePageView(TemplateView):
         #patch1 = patch.replace('\n','').replace('-', ' ')
 
         try:
-            project = Project.objects.get(git_url = self.url)
-            #master_branch = project.master_branch
-            project_dir = project.project_dir
-            project_name = project.project_name #esto ya no se usa? de la linea 61 a la 64
-
-            repo = Repo(project_dir)
+            repo = Repo(self.projectDir)
             user_branch = self.userEmail + "/" + self.currentBranch
             try:
                 repo.git.checkout(user_branch)
@@ -85,13 +87,32 @@ class HomePageView(TemplateView):
             except GitCommandError:
                 #no branch found with that name, create branch
                 repo.git.checkout(self.parentBranch)
-                repo.git.pull()
                 repo.git.checkout(['-b', user_branch])
                 print("new branch " + user_branch)
 
-            print("using file: " + path)
+            print("using file: " + self.pathToPatch)
             try:
-                #repo.git.apply(['-3', path])
+                repo.git.apply(["--ignore-space-change", "--ignore-whitespace", self.pathToPatch])
+                repo.git.add('*')
+                author = Actor("Nicolas Gordillo", "nicolas.gordillo@swisscom.com")
+                skip = b'\x0a'.decode("utf-8")
+                commitMessage = "q" + skip
+
+                tree = repo.index.write_tree()
+                parents = [ repo.head.commit ]
+
+                # Committer and Author
+                cr = repo.config_reader()
+
+                # Custom Date
+                time = 1554542401
+                offset = -7200
+                author_time, author_offset = time, offset
+                committer_time, committer_offset = time, offset
+
+                ew_commit = CommitGit.create_from_tree(repo, tree, commitMessage, parents, True, author,
+                                                       author, author_time, committer_time, author_offset)
+
                 print('No merge conflicts with ' + self.parentBranch)
             except GitCommandError as e:
                 #print(e)
@@ -101,12 +122,20 @@ class HomePageView(TemplateView):
 
             local_branches = repo.branches
             for branch in local_branches:
+                status = False
                 repo.git.checkout(branch.name)
+                repoTemp = Repo(self.projectDir)
+                commitId2 = repoTemp.commit().hexsha
+                mergeDiffPath = ''
                 try:
                     repo.git.merge(user_branch)
                 except GitCommandError:
+                    status = True
+                    mergeDiffPath = ''
                     #si hay error, hubo merge conflict
                     print('error')
+
+                self.saveToMergeConflicts(commitId2, status, mergeDiffPath)
 
                 repo.git.clean('-fdx')
                 repo.git.reset('--hard')
@@ -117,6 +146,11 @@ class HomePageView(TemplateView):
 
         except Exception as e:
             print(e)
+
+    def saveToMergeConflicts(self, commitId2, status, mergeDiffPath):
+        mergeConflict = MergeConflicts(commitId1_id = self.commitId, commitId2 = commitId2, status = status, mergeDiffPath = mergeDiffPath)
+        mergeConflict.save()
+
 
 # Add this view
 class AboutPageView(TemplateView):
@@ -143,11 +177,11 @@ def handle_uploaded_file(f, project_name, commitId):
         finally:
             os.umask(original_umask)
 
-    #with open(path, 'wb+') as destination:
-    #    for chunk in f.chunks():
-    #        destination.write(chunk)
-    with open(path, 'w') as destination:
-        destination.write(f)
+    with open(path, 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
+    #with open(path, 'w') as destination:
+    #    destination.write(f)
 
 def clean_git_repo(url):
     try:
