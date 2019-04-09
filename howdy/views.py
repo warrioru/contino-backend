@@ -45,11 +45,12 @@ class HomePageView(TemplateView):
     def post(self, request, **kwargs):
         #self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
         #self.patch = request.FILES.get('patch', False)
-        self.patch = request.POST['patch'].decode()
+        self.patch = request.POST['patch']
         self.url = request.POST['remote_url']
         self.parentCommitId = request.POST['parent_commit_id']
         self.commitId = request.POST['commit_id']
-        self.parentBranch = request.POST['parent_branch']
+        #self.parentBranch = request.POST['parent_branch']
+        self.parentBranch = 'master' #Asumo q viene el branch de master, esto hay q borrar
         self.currentBranch = request.POST['current_branch']
         self.userEmail = request.POST['email']
         self.username = request.POST['username']
@@ -103,8 +104,7 @@ class HomePageView(TemplateView):
                 repo.git.apply(["--ignore-space-change", "--ignore-whitespace", self.pathToPatch])
                 repo.git.add('*')
                 author = Actor(self.username, self.userEmail)
-                skip = b'\x0a'.decode("utf-8")
-                commitMessage = self.messageRaw + skip
+                commitMessage = self.messageRaw
 
                 tree = repo.index.write_tree()
                 parents = [ repo.head.commit ]
@@ -121,15 +121,18 @@ class HomePageView(TemplateView):
                 ew_commit = CommitGit.create_from_tree(repo, tree, commitMessage, parents, True, author,
                                                        author, author_time, committer_time, author_offset)
 
-                print('No merge conflicts with ' + self.parentBranch)
+                print('Commit ' + ew_commit.hexsha + ' added successfully')
             except GitCommandError as e:
-                #print(e)
-                print('Merge conflict found' + str(e.stderr))
+                print(e)
+                print('Error patching the branch' + str(e.stderr))
                 conflict = True
                 #messageToReturn = 'Merge conflict found' + str(e.stderr)
 
             local_branches = repo.branches
             for branch in local_branches:
+                if (branch.name == user_branch):
+                    continue
+
                 status = False
                 repo.git.checkout(branch.name)
                 repoTemp = Repo(self.projectDir)
@@ -137,7 +140,8 @@ class HomePageView(TemplateView):
                 mergeDiffPath = ''
                 try:
                     repo.git.merge(user_branch)
-                except GitCommandError:
+                except GitCommandError as e:
+                    print(e)
                     status = True
                     mergeDiffPath = ''
                     #si hay error, hubo merge conflict
@@ -145,8 +149,8 @@ class HomePageView(TemplateView):
 
                 self.saveToMergeConflicts(commitId2, status, mergeDiffPath)
 
-                repo.git.clean('-fdx')
-                repo.git.reset('--hard')
+                #repo.git.clean('-fdx')
+                repo.git.reset('--hard', commitId2)
 
 
 
