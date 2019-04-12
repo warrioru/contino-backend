@@ -2,3 +2,4 @@
 gitProjects/
 patches/
 db.sqlite3
+venv/
