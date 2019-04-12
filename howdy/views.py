@@ -95,8 +95,8 @@ class HomePageView(TemplateView):
                 print("checkout " + user_branch)
             except GitCommandError:
                 #no branch found with that name, create branch
-                repo.git.checkout(self.parentBranch)
-                repo.git.checkout(['-b', user_branch])
+                repo.git.checkout(self.parentCommitId)
+                #repo.git.checkout(['-b', user_branch])
                 print("new branch " + user_branch)
 
             print("using file: " + self.pathToPatch)
@@ -120,6 +120,7 @@ class HomePageView(TemplateView):
 
                 ew_commit = CommitGit.create_from_tree(repo, tree, commitMessage, parents, True, author,
                                                        author, author_time, committer_time, author_offset)
+                repo.git.checkout(['-b', user_branch])
 
                 print('Commit ' + ew_commit.hexsha + ' added successfully')
             except GitCommandError as e:
