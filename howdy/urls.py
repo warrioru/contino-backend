@@ -6,4 +6,5 @@ from howdy import views
 urlpatterns = [
     path('', views.HomePageView.as_view()),
     path('about/', views.AboutPageView.as_view()),
+    path('commitCheck/', views.CommitCheckPageView.as_view()),
 ]

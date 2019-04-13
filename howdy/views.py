@@ -1,6 +1,7 @@
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
+import json
 from .forms import PatchForm
 from git import Commit as CommitGit
 from git import *
@@ -175,6 +176,46 @@ def printRepo(repo):
         print('Hash {}, author {}'.format(commit.hash, commit.author.name))
 
     return repo.branches
+
+class CommitCheckPageView(TemplateView):
+    project = None
+    projectDir = None
+    projectName = None
+    url = None
+    commits = None
+    pivotCommit = None
+
+    def post(self, request, **kwargs):
+        received_json_data = json.loads(request.body)
+        self.commits = (received_json_data['commits'])
+        if not len(self.commits) == 0:
+            self.url = received_json_data['url']
+
+            self.project = Project.objects.get(git_url = self.url)
+            self.projectDir = self.project.project_dir
+            self.projectName = self.project.project_name
+
+
+            repo = Repo(self.projectDir)
+
+            for commit in self.commits:
+                try:
+                    repo.git.branch('--contains', str(commit))
+                    self.pivotCommit = str(commit)
+                    break
+                except GitCommandError:
+                    print(str(commit) + ' not known')
+                    continue
+
+
+            if not self.pivotCommit == None:
+                return JsonResponse({'pivot_commit':self.pivotCommit})
+            else:
+                return JsonResponse({'error': "could not find any commit"})
+
+        else:
+            return JsonResponse({'error':'no commits ids specified'})
+
 
 
 
