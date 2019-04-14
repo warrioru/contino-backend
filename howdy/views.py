@@ -44,28 +44,34 @@ class HomePageView(TemplateView):
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
-        #self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
-        #self.patch = request.FILES.get('patch', False)
-        self.patch = request.POST['patch']
-        self.url = request.POST['remote_url']
-        self.parentCommitId = request.POST['parent_commit_id']
-        self.commitId = request.POST['commit_id']
-        #self.parentBranch = request.POST['parent_branch']
-        self.parentBranch = 'master' #Asumo q viene el branch de master, esto hay q borrar
-        self.currentBranch = request.POST['current_branch']
-        self.userEmail = request.POST['email']
-        self.username = request.POST['username']
-        self.messageRaw = request.POST['message']
-        self.time = str(request.POST['time'])
-        self.offset = str(request.POST['offset'])
+        received_json_data = json.loads(request.body)
+        if not len(received_json_data) == 0:
+            for data in received_json_data:
+                commit = json.loads(data)
 
-        if self.patch:
-            self.createPatchFile()
-            self.saveCommitInfo()
-            message = self.applyPatchToLocalRepo() # la funcion deberia estar en esta clase, no deberia tener que pasarle el objeto
-            return JsonResponse({'message': message})
+                #self.remoteRepo = pickle.loads(request.POST['repo'].encode()) # TODO:descomentar para usar con el cliente, este body contiene el objeto que necesitamos.
+                #self.patch = request.FILES.get('patch', False)
+                self.patch = commit['patch']
+                self.url = commit['remote_url']
+                self.parentCommitId = commit['parent_commit_id']
+                self.commitId = commit['commit_id']
+                #self.parentBranch = request.POST['parent_branch']
+                self.parentBranch = 'master' #Asumo q viene el branch de master, esto hay q borrar
+                self.currentBranch = commit['current_branch']
+                self.userEmail = commit['email']
+                self.username = commit['username']
+                self.messageRaw = commit['message']
+                self.time = str(commit['time'])
+                self.offset = str(commit['offset'])
+
+                self.createPatchFile()
+                self.saveCommitInfo()
+                message = self.applyPatchToLocalRepo()
+
         else:
-            return JsonResponse({'message': 'Missing patch file'})
+            return JsonResponse({'message': 'Empty array received, try again'})
+
+        return JsonResponse({'message': message})
 
     def createPatchFile(self):
         #create a file with the patch TODO:esto debe ser otra funcion dentro de la clase de arriba en caso de que falle.
@@ -91,12 +97,14 @@ class HomePageView(TemplateView):
         try:
             repo = Repo(self.projectDir)
             user_branch = self.userEmail + "/" + self.currentBranch
+            is_new_branch = False
             try:
                 repo.git.checkout(user_branch)
                 print("checkout " + user_branch)
             except GitCommandError:
                 #no branch found with that name, create branch
                 repo.git.checkout(self.parentCommitId)
+                is_new_branch = True
                 #repo.git.checkout(['-b', user_branch])
                 print("new branch " + user_branch)
 
@@ -121,7 +129,8 @@ class HomePageView(TemplateView):
 
                 ew_commit = CommitGit.create_from_tree(repo, tree, commitMessage, parents, True, author,
                                                        author, author_time, committer_time, author_offset)
-                repo.git.checkout(['-b', user_branch])
+                if is_new_branch:
+                    repo.git.checkout(['-b', user_branch])
 
                 print('Commit ' + ew_commit.hexsha + ' added successfully')
             except GitCommandError as e:
@@ -209,6 +218,7 @@ class CommitCheckPageView(TemplateView):
 
 
             if not self.pivotCommit == None:
+                print(self.pivotCommit)
                 return JsonResponse({'pivot_commit':self.pivotCommit})
             else:
                 return JsonResponse({'error': "could not find any commit"})
