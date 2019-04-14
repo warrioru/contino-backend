@@ -154,7 +154,7 @@ class HomePageView(TemplateView):
                 except GitCommandError as e:
                     print(e)
                     status = True
-                    mergeDiffPath = ''
+                    mergeDiffPath = repo.git.diff("--diff-filter", "U", "-U0")
                     #si hay error, hubo merge conflict
                     print('error')
 
