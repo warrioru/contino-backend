@@ -45,7 +45,7 @@ class HomePageView(TemplateView):
 
     def post(self, request, **kwargs):
         received_json_data = json.loads(request.body)
-        if not len(received_json_data) == 0:
+        if len(received_json_data) != 0:
             for data in received_json_data:
                 commit = json.loads(data)
 
@@ -197,7 +197,7 @@ class CommitCheckPageView(TemplateView):
     def post(self, request, **kwargs):
         received_json_data = json.loads(request.body)
         self.commits = (received_json_data['commits'])
-        if not len(self.commits) == 0:
+        if len(self.commits) != 0:
             self.url = received_json_data['url']
 
             self.project = Project.objects.get(git_url = self.url)
@@ -217,8 +217,8 @@ class CommitCheckPageView(TemplateView):
                     continue
 
 
-            if not self.pivotCommit == None:
-                print(self.pivotCommit)
+            if self.pivotCommit != None:
+                print(self.pivotCommit + 'known commit')
                 return JsonResponse({'pivot_commit':self.pivotCommit})
             else:
                 return JsonResponse({'error': "could not find any commit"})
