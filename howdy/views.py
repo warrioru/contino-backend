@@ -5,7 +5,6 @@ import json
 from .forms import PatchForm
 from git import Commit as CommitGit
 from git import *
-from github import Github
 from pydriller import RepositoryMining
 from api.models import Project
 from howdy.models import Commit, MergeConflicts

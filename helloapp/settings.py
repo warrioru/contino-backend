@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'api',
     'git',
-    'pydriller'
+    'pydriller',
+    'originClient.apps.TestdeleteConfig'
 ]
 #'django.middleware.csrf.CsrfViewMiddleware',
 MIDDLEWARE = [
