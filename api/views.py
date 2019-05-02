@@ -55,7 +55,10 @@ def create_repo(serializer):
         result = re.search(owner + '/(.*).git',url)
         name = result.group(1)
         projectDir = './gitProjects/' + name + '/'
+        originDir = './gitOrigins/' + name + '/'
         temp_repo = Repo.clone_from(url, projectDir)
+        temp_repo_origin = Repo.clone_from(url, originDir)
+
         branches = []
         for branch in temp_repo.remotes.origin.refs:
             branches.append(branch)
