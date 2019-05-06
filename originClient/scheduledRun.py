@@ -1,6 +1,7 @@
 import requests
 from git import Repo, Git
 from api.models import Project
+from pathlib import Path
 import os
 import json
 
@@ -11,22 +12,28 @@ index = None
 
 def update_forecast():
     Proys = Project.objects.all()
+    print(Proys)
     for project in Proys:
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, '../gitOrigins/' . project.project_name)
-        root = Repo(path) #thsi should be the originRepo.
-        root.git.remote('update')
-        branches = root.git.branch('-r')
-        for branch in branches:
-            root.git.checkout(branch)
-            updated = root.git.status('-uno')
-            if not updated:
-                root.git.pull()
-                is_correct_response(root)
+        try:
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            my_path = Path(my_path).parent
+            path = os.path.join(my_path, 'gitOrigins/' + project.project_name)
+            root = Repo(path) #thsi should be the originRepo.
+            pull = root.git.remote('update')
+            branches = list(root.remote().refs)
+            for branch in branches:
+                root.git.checkout(branch.reference.remote_head)
+                updated = root.git.status('-uno')
+                if "Your branch is behind" in updated:
+                    root.git.pull()#TODO:check if this works
+                    is_correct_response(root)
+        except BaseException:
+            print(BaseException)
+
 
 def is_correct_response(repo):
     remote_url = repo.remotes.origin.url
-    pivot_commit = checkDelta(remote_url)
+    pivot_commit = checkDelta(remote_url, repo)
 
     #mandar solo el delta
     delta = []
@@ -38,7 +45,7 @@ def is_correct_response(repo):
         parent_commit_id = repo.commit(commit).parents[0].hexsha
         current_branch = repo.active_branch.name
         parent_branch = repo.git.branch(['--contains', parent_commit_id]).replace("* ", "")#TODO: usar objeto git y no consola P.D: esto funciona?
-        email = repo.commit(commit).author.email
+        email = 'origin'#TODO:check if this is ok.
         username = repo.commit(commit).author.name
         commit_id = repo.commit(commit).hexsha
         message = repo.commit(commit).message
@@ -64,7 +71,7 @@ def is_correct_response(repo):
     req = requests.post(HOST, data=json.dumps(delta), headers = headers)
 
 
-def checkDelta(remote_url):
+def checkDelta(remote_url, repo):
 
     completeList= list(repo.iter_commits(repo.active_branch))
     idList = commitListtoArray(completeList)
