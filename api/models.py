@@ -19,7 +19,3 @@ class Project(models.Model):
     master_branch = models.CharField(max_length=255)
     branches = models.CharField(max_length=255, default='')
 
-    def __str__(self):
-        """Return a human readable representation of the model instance."""
-        return "{}".format(self.name)
-
