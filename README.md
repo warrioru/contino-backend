@@ -6,22 +6,22 @@ Installation
 
 virtualenv -p /usr/bin/python3 env
 source env/bin/activate
-pip install Django
-pip install djangorestframework
+pip3 install Django
+pip3 install djangorestframework
 
 ##para modificar schema
-python manage.py makemigrations
-python manage.py migrate
+python3.7 manage.py makemigrations
+python3.7 manage.py migrate
 
 #correr el server
-python manage.py runserver
+python3.7 manage.py runserver
 
 #git
-pip install gitpython
-pip install pydriller
+pip3 install gitpython
+pip3 install pydriller
 
 #postgres
-pip install psycopg2
+pip3 install psycopg2
 
 #comando de git para patch
 git format-patch -1 --stdout > a.patch
@@ -34,8 +34,10 @@ git reset --hard
 git reset --hard @{u}
 
 #API conexion a Github
-pip install PyGithub
+pip3 install PyGithub
 
 #comando para ver q hay en el hash id
 (printf "commit %s\0" $(git cat-file commit HEAD | wc -c); git cat-file commit HEAD)
 
+#apscheduler
+pip3 install apscheduler

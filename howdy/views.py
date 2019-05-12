@@ -17,6 +17,7 @@ from time import (time, altzone)
 import datetime
 from io import BytesIO
 from gitdb import *
+from graphviz import Digraph
 
 # Create your views here.
 class HomePageView(TemplateView):
@@ -40,6 +41,7 @@ class HomePageView(TemplateView):
 
     def get(self, request, **kwargs):
         #printRepo(repo)
+        graphTree()
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
@@ -258,91 +260,33 @@ def clean_git_repo(url):
     except GitCommandError as e:
         print(e)
 
-def applyPatchToPullRequests(url, patch):
-    messageToReturn = ''
+def graphTree():
+    g = Digraph('G', filename='hello.gv')
 
-    try:
-        project = Project.objects.get(git_url = url)
-        owner = project.owner
-        project_name = project.project_name
-        master_branch = project.master_branch
+    #clientes
+    clients = []
+    project = Project.objects.get(git_url = "https://github.com/warrioru/Coffee.git")
+    projectDir = project.project_dir
+    projectName = project.project_name
+    repo = Repo(projectDir)
+    branches = repo.branches
+    for branch in branches:
+        user_email = branch.name.split('/')[0]
+        if "@" in user_email:
+            if user_email not in clients:
+                clients.append(user_email)
+                g.node(user_email, shape='square')
+                for temp_branch in branches:
+                    if user_email in temp_branch.name:
+                        commits = list(repo.iter_commits(temp_branch.name))
+                        commits.reverse()
+                        g.edge(user_email, temp_branch.name)
+                        g.edge(temp_branch.name, commits[0].hexsha)
+                        for i in range(len(commits[1:])):
+                            try:
+                                g.edge(commits[i].hexsha, commits[i+1].hexsha)
+                            except:
+                                print('end of edge')
 
-        #check for merge conflicts with master branch
-        conflict = applyPatchToLocalRepo(project.git_url, patch, 0)
-        if conflict:
-            clean_git_repo(url)
-            return "Merge conflict with " + master_branch
-        else:
-            messageToReturn += "No conflict with " + master_branch + " "
-        clean_git_repo(url)
 
-        g = Github()
-        repo = g.get_repo(str(owner) + "/" + str(project_name))
-        pulls = repo.get_pulls(state='open', sort='created', base=master_branch)
-        prs_conflict_master = []
-        counter = 1
-        #check for merge conflicts with each pull request with status open
-        for pr in pulls:
-            #if pr are found, download the patch, apply, log
-            #apply PR
-            print("checking against PR #: " + str(pr.number))
-            urllib.request.urlretrieve(pr.patch_url, "PR" + str(counter) + ".patch")
-            conflict = applyPatchToLocalRepo(project.git_url, '', counter)
-            if conflict:
-                clean_git_repo(url)
-                prs_conflict_master.append(counter)
-                messageToReturn += "PR #: " + str(pr.number) + "in conflict with " + master_branch
-            else:
-                conflict = applyPatchToLocalRepo(project.git_url, patch, 0)
-                if conflict:
-                    messageToReturn += "Conflict with PR #: " + str(pr.number) + " "
-                else:
-                    messageToReturn += "No conflict with PR #: " + str(pr.number) + " "
-
-                clean_git_repo(url)
-                counter = counter + 1
-
-        #check for all the PRs combined
-        counter = 1
-        skip = 0
-        for pr in pulls:
-            #apply PR but don't clean
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "../PR" + str(counter) + ".patch")
-
-            #skip the PR if it has conflict with master
-            jump_out = 0
-            for number in prs_conflict_master:
-                if (counter == number):
-                    jump_out = 1
-                    break
-            if jump_out:
-                print("Skipped PR #: " + str(counter))
-                break
-
-            conflict = applyPatchToLocalRepo(project.git_url, '', counter)
-            if conflict:
-                clean_git_repo(url)
-                os.remove(path)
-                skip = 1
-                messageToReturn += "Couldn't merge all PR because of conflict PR #: " + str(pr.number)
-                break
-            else:
-                os.remove(path)
-                counter = counter + 1
-
-        #run this code only if there are pull requests found
-        if (counter > 1) and (not skip):
-            conflict = applyPatchToLocalRepo(project.git_url, patch, 0)
-            if conflict:
-                messageToReturn += "Conflict with all PRs combined "
-            else:
-                messageToReturn += "No conflict with all PRs combined "
-
-        clean_git_repo(url)
-
-    except Exception as e:
-        #print(e)
-        print(traceback.format_exc())
-
-    return messageToReturn
+    g.view(cleanup = True)
