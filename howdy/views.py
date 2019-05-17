@@ -18,6 +18,9 @@ import datetime
 from io import BytesIO
 from gitdb import *
 from graphviz import Digraph
+import uuid
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 # Create your views here.
 class HomePageView(TemplateView):
@@ -41,7 +44,6 @@ class HomePageView(TemplateView):
 
     def get(self, request, **kwargs):
         #printRepo(repo)
-        graphTree()
         return render(request, 'index.html', context=None)
 
     def post(self, request, **kwargs):
@@ -227,6 +229,20 @@ class CommitCheckPageView(TemplateView):
         else:
             return JsonResponse({'error':'no commits ids specified'})
 
+class GetDiffPageView(TemplateView):
+    def get(self, request, **kwargs):
+        commitUser = request.GET.get('commitUser', None)
+        commitTarget = request.GET.get('commitTarget', None)
+        gitUrl = request.GET.get('gitUrl', None)
+        project = Project.objects.get(git_url = "https://github.com/warrioru/Coffee.git")
+        projectDir = project.project_dir
+        projectName = project.project_name
+        repo = Repo(projectDir)
+        diff = repo.git.diff(commitUser, commitTarget)
+
+        return JsonResponse({'diff': diff})
+
+
 
 
 
@@ -260,8 +276,16 @@ def clean_git_repo(url):
     except GitCommandError as e:
         print(e)
 
-def graphTree():
-    g = Digraph('G', filename='hello.gv')
+class GetGraphPageView(TemplateView):
+
+    def post(self, request, **kwargs):
+        gitUrl = request.POST.get('gitUrl', '')
+        url = graphTree(gitUrl)
+        return JsonResponse({'graphUrl': url})
+
+def graphTree(gitUrl):
+    filename = 'graphs/' + str(uuid.uuid4())
+    g = Digraph('G', filename = filename)
 
     #clientes
     clients = []
@@ -289,4 +313,20 @@ def graphTree():
                                 print('end of edge')
 
 
-    g.view(cleanup = True)
+    g.render(view= False, cleanup = True, format = "svg")
+
+    svgF = filename + ".svg"
+    doc = minidom.parse(svgF)  # parseString also exists
+    path_strings = [path.getAttribute('stroke') for path
+                    in doc.getElementsByTagName('polygon')]
+    for path in doc.getElementsByTagName('polygon'):
+        if path.attributes["stroke"].value == "transparent":
+            path.attributes["stroke"].value = "#000000"
+
+    with open(svgF,'w') as f:
+        f.write(doc.toxml())
+
+    doc.unlink()
+
+    url = "http://5a185d27.ngrok.io/" + filename + ".svg"
+    return url

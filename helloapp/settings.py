@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'git',
     'pydriller',
     'originClient.apps.TestdeleteConfig'
+
 ]
 #'django.middleware.csrf.CsrfViewMiddleware',
 MIDDLEWARE = [
@@ -129,3 +130,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+MEDIA_ROOT = '../contino-backend/graphs'
+
+MEDIA_URL = '/graphs/'
