@@ -284,7 +284,8 @@ class GetGraphPageView(TemplateView):
         return JsonResponse({'graphUrl': url})
 
 def graphTree(gitUrl):
-    filename = 'graphs/' + str(uuid.uuid4())
+    uid = str(uuid.uuid4())
+    filename = 'graphs/' + uid
     g = Digraph('G', filename = filename)
 
     #clientes
@@ -317,8 +318,6 @@ def graphTree(gitUrl):
 
     svgF = filename + ".svg"
     doc = minidom.parse(svgF)  # parseString also exists
-    path_strings = [path.getAttribute('stroke') for path
-                    in doc.getElementsByTagName('polygon')]
     for path in doc.getElementsByTagName('polygon'):
         if path.attributes["stroke"].value == "transparent":
             path.attributes["stroke"].value = "#000000"
@@ -328,5 +327,25 @@ def graphTree(gitUrl):
 
     doc.unlink()
 
-    url = "http://5a185d27.ngrok.io/" + filename + ".svg"
-    return url
+    urlSVG = "http://fa2572e4.ngrok.io/" + filename + ".svg"
+    urlHTML = "http://fa2572e4.ngrok.io/" + filename + ".html"
+
+    f = open(filename + '.html','w+')
+
+    message = """<html>
+<head>
+    <meta charset="utf-8">
+    <title>Howdy! {{name}}</title>
+</head>
+<body>
+<h1>Howdy! I am Learning Django!</h1>
+<object type="image/svg+xml" data='""" + urlSVG + """'></object>='>
+<p>{{branches}}</p>
+<a href="/about/">About Me</a>
+</body>
+</html>"""
+
+    f.write(message)
+    f.close()
+
+    return urlHTML
