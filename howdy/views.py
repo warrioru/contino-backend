@@ -238,9 +238,11 @@ class GetDiffPageView(TemplateView):
         projectDir = project.project_dir
         projectName = project.project_name
         repo = Repo(projectDir)
-        diff = repo.git.diff(commitUser, commitTarget)
-
-        return JsonResponse({'diff': diff})
+        try:
+            diff = repo.git.diff(commitUser, commitTarget)
+            return JsonResponse({'diff': diff}, status=200)
+        except GitCommandError as e:
+            return JsonResponse({'message': str(e.stderr)}, status=200)
 
 
 
@@ -280,10 +282,11 @@ class GetGraphPageView(TemplateView):
 
     def post(self, request, **kwargs):
         gitUrl = request.POST.get('gitUrl', '')
-        url = graphTree(gitUrl)
+        commitUser = request.POST.get('commitUser', '')
+        url = graphTree(gitUrl, commitUser)
         return JsonResponse({'graphUrl': url})
 
-def graphTree(gitUrl):
+def graphTree(gitUrl, commitUser):
     uid = str(uuid.uuid4())
     filename = 'graphs/' + uid
     g = Digraph('G', filename = filename)
@@ -327,23 +330,35 @@ def graphTree(gitUrl):
 
     doc.unlink()
 
-    urlSVG = "http://fa2572e4.ngrok.io/" + filename + ".svg"
-    urlHTML = "http://fa2572e4.ngrok.io/" + filename + ".html"
+    urlSVG = "http://c6043f4f.ngrok.io/" + filename + ".svg"
+    urlHTML = "http://c6043f4f.ngrok.io/" + filename + ".html"
 
     f = open(filename + '.html','w+')
 
     message = """<html>
 <head>
     <meta charset="utf-8">
-    <title>Howdy! {{name}}</title>
+    <title>Tree Overview</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.10/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="style.css"> 
+
 </head>
 <body>
-<h1>Howdy! I am Learning Django!</h1>
-<object type="image/svg+xml" data='""" + urlSVG + """'></object>='>
-<p>{{branches}}</p>
-<a href="/about/">About Me</a>
+<h1>Project tree overview</h1>
+<object type="image/svg+xml" data='""" + urlSVG + """'></object>
+
+<p>Commit user: </p><input type='text' id='commitUser' value='""" + commitUser + """'><br>
+<p>Target commit: </p><input type='text' id='commitTarget'><br>
+<input type='submit' value='Submit' id='submitButton'>
+
+<div id='diffContainer'></div>
+
+
+<script src="script.js" type="application/javascript"></script>
 </body>
 </html>"""
+
 
     f.write(message)
     f.close()
