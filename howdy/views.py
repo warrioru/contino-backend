@@ -324,14 +324,18 @@ def graphTree(gitUrl, commitUser):#
                         commits = list(repo.iter_commits(temp_branch.name))
                         commits.reverse()
                         g.edge(user_email, temp_branch.name)
-                        g.edge(temp_branch.name, commits[0].hexsha)
+                        g.edge(temp_branch.name, commits[0].hexsha)#
                         for i in range(len(commits[1:])):
                             try:
                                 if commits[i+1].hexsha in conflictsArray:
                                     g.node(commits[i+1].hexsha, style='filled', color='red')
                                     g.edge(commits[i].hexsha, commits[i+1].hexsha)
                                 else:
-                                    g.edge(commits[i].hexsha, commits[i+1].hexsha)
+                                    if commits[i+1].hexsha == commitUser:
+                                        g.node(commits[i+1].hexsha, style='filled', color='cyan2')
+                                        g.edge(commits[i].hexsha, commits[i+1].hexsha)
+                                    else:
+                                        g.edge(commits[i].hexsha, commits[i+1].hexsha)
                             except:
                                 print('end of edge')
 

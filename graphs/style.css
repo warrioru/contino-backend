@@ -4,3 +4,7 @@ pre code {
     display: block;
     padding: 20px;
 }
+
+input[type="text"] {
+    width: 300px;
+}
