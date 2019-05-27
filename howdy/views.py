@@ -1,6 +1,7 @@
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
+from django.db.models import Q
 import json
 from .forms import PatchForm
 from git import Commit as CommitGit
@@ -286,10 +287,24 @@ class GetGraphPageView(TemplateView):
         url = graphTree(gitUrl, commitUser)
         return JsonResponse({'graphUrl': url})
 
-def graphTree(gitUrl, commitUser):
+def graphTree(gitUrl, commitUser):#
     uid = str(uuid.uuid4())
     filename = 'graphs/' + uid
     g = Digraph('G', filename = filename)
+
+    #get conflicts from db
+    conflicts = MergeConflicts.objects.filter(
+        Q(status = 1),
+        Q(commitId1_id = commitUser) | Q(commitId2 = commitUser)
+    )
+    conflictsArray = []
+
+    for conflict in conflicts:
+        if conflict.commitId1_id == commitUser:
+            conflictsArray.append(conflict.commitId2)
+        else:
+            conflictsArray.append(conflict.commitId1_id)
+
 
     #clientes
     clients = []
@@ -312,7 +327,11 @@ def graphTree(gitUrl, commitUser):
                         g.edge(temp_branch.name, commits[0].hexsha)
                         for i in range(len(commits[1:])):
                             try:
-                                g.edge(commits[i].hexsha, commits[i+1].hexsha)
+                                if commits[i+1].hexsha in conflictsArray:
+                                    g.node(commits[i+1].hexsha, style='filled', color='red')
+                                    g.edge(commits[i].hexsha, commits[i+1].hexsha)
+                                else:
+                                    g.edge(commits[i].hexsha, commits[i+1].hexsha)
                             except:
                                 print('end of edge')
 
@@ -330,8 +349,8 @@ def graphTree(gitUrl, commitUser):
 
     doc.unlink()
 
-    urlSVG = "http://c6043f4f.ngrok.io/" + filename + ".svg"
-    urlHTML = "http://c6043f4f.ngrok.io/" + filename + ".html"
+    urlSVG = "http://7a57bf9e.ngrok.io/" + filename + ".svg"
+    urlHTML = "http://7a57bf9e.ngrok.io/" + filename + ".html"
 
     f = open(filename + '.html','w+')
 
