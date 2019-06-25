@@ -290,7 +290,7 @@ class GetGraphPageView(TemplateView):
 def graphTree(gitUrl, commitUser):#
     uid = str(uuid.uuid4())
     filename = 'graphs/' + uid
-    g = Digraph('G', filename = filename)
+    g = Digraph('G', filename = filename, strict = True)
 
     #get conflicts from db
     conflicts = MergeConflicts.objects.filter(
