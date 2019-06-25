@@ -308,7 +308,7 @@ def graphTree(gitUrl, commitUser):#
 
     #clientes
     clients = []
-    project = Project.objects.get(git_url = "https://github.com/warrioru/Coffee.git")
+    project = Project.objects.get(git_url=gitUrl)
     projectDir = project.project_dir
     projectName = project.project_name
     repo = Repo(projectDir)
@@ -353,8 +353,8 @@ def graphTree(gitUrl, commitUser):#
 
     doc.unlink()
 
-    urlSVG = "http://7a57bf9e.ngrok.io/" + filename + ".svg"
-    urlHTML = "http://7a57bf9e.ngrok.io/" + filename + ".html"
+    urlSVG = "http://localhost:8000/" + filename + ".svg"
+    urlHTML = "http://localhost:8000/" + filename + ".html"
 
     f = open(filename + '.html','w+')
 
