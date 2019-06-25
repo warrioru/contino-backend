@@ -2,12 +2,13 @@ $("#submitButton").on("click", function() {
     onClickSubmitButton();
 });
 function onClickSubmitButton() {
-    let urlGet = "http://c6043f4f.ngrok.io/getDiff";
+    let urlGet = "http://localhost:8000/getDiff";
     let commitUser = $("#commitUser").val();
     let commitTarget = $("#commitTarget").val();
+    let gitUrl = $("#gitUrl").text();
 
     if (commitUser != "" && commitTarget != "") {
-        $.get(urlGet + "?commitUser=" + commitUser + "&commitTarget=" + commitTarget, function(data, status) {
+        $.get(urlGet + "?commitUser=" + commitUser + "&commitTarget=" + commitTarget + "&gitUrl=" + gitUrl, function(data, status) {
             if (data.hasOwnProperty('message')) {
                 alert(data.message);
             } else {

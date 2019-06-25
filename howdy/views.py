@@ -235,7 +235,7 @@ class GetDiffPageView(TemplateView):
         commitUser = request.GET.get('commitUser', None)
         commitTarget = request.GET.get('commitTarget', None)
         gitUrl = request.GET.get('gitUrl', None)
-        project = Project.objects.get(git_url = "https://github.com/warrioru/Coffee.git")
+        project = Project.objects.get(git_url = gitUrl)
         projectDir = project.project_dir
         projectName = project.project_name
         repo = Repo(projectDir)
@@ -291,6 +291,7 @@ def graphTree(gitUrl, commitUser):#
     uid = str(uuid.uuid4())
     filename = 'graphs/' + uid
     g = Digraph('G', filename = filename, strict = True)
+    g.attr(rankdir='BT')
 
     #get conflicts from db
     conflicts = MergeConflicts.objects.filter(
@@ -318,7 +319,7 @@ def graphTree(gitUrl, commitUser):#
         if "@" in user_email:
             if user_email not in clients:
                 clients.append(user_email)
-                g.node(user_email, shape='square')
+                g.node(user_email, shape='square', rank='sink')
                 for temp_branch in branches:
                     if user_email in temp_branch.name:
                         commits = list(repo.iter_commits(temp_branch.name))
@@ -369,6 +370,7 @@ def graphTree(gitUrl, commitUser):#
 </head>
 <body>
 <h1>Project tree overview</h1>
+<h3 id='gitUrl'>""" + gitUrl + """</h3>
 <object type="image/svg+xml" data='""" + urlSVG + """'></object>
 
 <p>Commit user: </p><input type='text' id='commitUser' value='""" + commitUser + """'><br>
