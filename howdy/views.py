@@ -57,6 +57,8 @@ class HomePageView(TemplateView):
                 #self.patch = request.FILES.get('patch', False)
                 self.patch = commit['patch']
                 self.url = commit['remote_url']
+                if ".git" not in self.url:
+                    self.url = self.url + ".git"
                 self.parentCommitId = commit['parent_commit_id']
                 self.commitId = commit['commit_id']
                 #self.parentBranch = request.POST['parent_branch']
@@ -114,7 +116,7 @@ class HomePageView(TemplateView):
 
             print("using file: " + self.pathToPatch)
             try:
-                repo.git.apply(["--ignore-space-change", "--ignore-whitespace", self.pathToPatch])
+                repo.git.apply(["--ignore-space-change", "--ignore-whitespace", "--3way", self.pathToPatch])
                 repo.git.add('*')
                 author = Actor(self.username, self.userEmail)
                 commitMessage = self.messageRaw
@@ -140,6 +142,7 @@ class HomePageView(TemplateView):
             except GitCommandError as e:
                 print(e)
                 print('Error patching the branch' + str(e.stderr))
+                repo.git.checkout("master")
                 conflict = True
                 #messageToReturn = 'Merge conflict found' + str(e.stderr)
 
@@ -172,6 +175,7 @@ class HomePageView(TemplateView):
             return conflict
 
         except Exception as e:
+            repo.git.checkout("master")
             print(e)
 
     def saveToMergeConflicts(self, commitId2, status, mergeDiffPath):
@@ -203,6 +207,9 @@ class CommitCheckPageView(TemplateView):
         self.commits = (received_json_data['commits'])
         if len(self.commits) != 0:
             self.url = received_json_data['url']
+            if ".git" not in self.url:
+                self.url = self.url + ".git"
+            print(self.url)
 
             self.project = Project.objects.get(git_url = self.url)
             self.projectDir = self.project.project_dir
@@ -283,6 +290,8 @@ class GetGraphPageView(TemplateView):
 
     def post(self, request, **kwargs):
         gitUrl = request.POST.get('gitUrl', '')
+        if ".git" not in gitUrl:
+            gitUrl = gitUrl + ".git"
         commitUser = request.POST.get('commitUser', '')
         url = graphTree(gitUrl, commitUser)
         return JsonResponse({'graphUrl': url})
@@ -291,7 +300,6 @@ def graphTree(gitUrl, commitUser):#
     uid = str(uuid.uuid4())
     filename = 'graphs/' + uid
     g = Digraph('G', filename = filename, strict = True)
-    g.attr(rankdir='BT')
 
     #get conflicts from db
     conflicts = MergeConflicts.objects.filter(
@@ -319,14 +327,14 @@ def graphTree(gitUrl, commitUser):#
         if "@" in user_email:
             if user_email not in clients:
                 clients.append(user_email)
-                g.node(user_email, shape='square', rank='sink')
+                #g.node(user_email, shape='square')
                 for temp_branch in branches:
                     if user_email in temp_branch.name:
                         commits = list(repo.iter_commits(temp_branch.name))
                         commits.reverse()
-                        g.edge(user_email, temp_branch.name)
-                        g.edge(temp_branch.name, commits[0].hexsha)#
-                        for i in range(len(commits[1:])):
+                        #g.edge(user_email, temp_branch.name)
+                        #g.edge(temp_branch.name, commits[0].hexsha)#
+                        for i in range(len(commits)):
                             try:
                                 if commits[i+1].hexsha in conflictsArray:
                                     g.node(commits[i+1].hexsha, style='filled', color='red')
@@ -335,9 +343,14 @@ def graphTree(gitUrl, commitUser):#
                                     if commits[i+1].hexsha == commitUser:
                                         g.node(commits[i+1].hexsha, style='filled', color='cyan2')
                                         g.edge(commits[i].hexsha, commits[i+1].hexsha)
+
+
                                     else:
                                         g.edge(commits[i].hexsha, commits[i+1].hexsha)
+
                             except:
+                                g.edge(commits[i].hexsha, temp_branch.name)
+                                g.edge(temp_branch.name, user_email)
                                 print('end of edge')
 
 
