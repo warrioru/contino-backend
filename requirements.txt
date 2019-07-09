@@ -8,3 +8,4 @@ graphviz
 gunicorn
 dj-database-url
 whitenoise
+psycopg2
