@@ -28,11 +28,14 @@ class HomePageView(TemplateView):
     patch = None
     url = None
     parentCommitId = None
+    parentCommitIdArray = None
     commitId = None
     parentBranch = None
     currentBranch = None
     userEmail = None
+    userEmailCommitter = None
     username = None
+    usernameCommitter = None
     pathToPatch = None
     project = None
     projectDir = None
@@ -41,6 +44,8 @@ class HomePageView(TemplateView):
     messageRaw = None
     time = None
     offset = None
+    timeCommitter = None
+    offsetCommitter = None
 
 
     def get(self, request, **kwargs):
@@ -60,15 +65,20 @@ class HomePageView(TemplateView):
                 if ".git" not in self.url:
                     self.url = self.url + ".git"
                 self.parentCommitId = commit['parent_commit_id']
+                self.parentCommitIdArray = commit['parent_commit_id_array']
                 self.commitId = commit['commit_id']
                 #self.parentBranch = request.POST['parent_branch']
                 #self.parentBranch = 'master' #Asumo q viene el branch de master, esto hay q borrar
                 self.currentBranch = commit['current_branch']
                 self.userEmail = commit['email']
                 self.username = commit['username']
+                self.userEmailCommitter = commit['commiter_email']
+                self.usernameCommitter = commit['commiter_name']
                 self.messageRaw = commit['message']
-                self.time = str(commit['time'])
-                self.offset = str(commit['offset'])
+                self.time = str(commit['author_time'])
+                self.offset = str(commit['author_offset'])
+                self.timeCommitter = str(commit['commiter_time'])
+                self.offsetCommitter = str(commit['commiter_offset'])
 
                 self.createPatchFile()
                 self.saveCommitInfo()
@@ -120,10 +130,19 @@ class HomePageView(TemplateView):
                 repo.git.apply(["--ignore-space-change", "--ignore-whitespace", "--3way", self.pathToPatch])
                 repo.git.add('*')
                 author = Actor(self.username, self.userEmail)
+                committer = Actor(self.usernameCommitter, self.userEmailCommitter)
                 commitMessage = self.messageRaw
 
                 tree = repo.index.write_tree()
-                parents = [ repo.head.commit ]
+                parents = []
+                for commitId in self.parentCommitIdArray:
+                    tempCommit = repo.commit(commitId)
+                    parents.append(tempCommit)
+                if len(self.parentCommitIdArray) > 1:
+                    repo.git.cherry_pick(parents[1])
+                    repo.git.add('*')
+                    tree = repo.index.write_tree()
+                #parents = [ repo.head.commit ]
 
                 # Committer and Author
                 cr = repo.config_reader()
@@ -131,11 +150,13 @@ class HomePageView(TemplateView):
                 # Custom Date
                 time = self.time
                 offset = self.offset
+                timeCommitter = self.timeCommitter
+                offsetCommitter = self.offsetCommitter
                 author_time, author_offset = time, offset
-                committer_time, committer_offset = time, offset
+                committer_time, committer_offset = timeCommitter, offsetCommitter
 
                 ew_commit = CommitGit.create_from_tree(repo, tree, commitMessage, parents, True, author,
-                                                       author, author_time, committer_time, author_offset)
+                                                       committer, author_time, committer_time, author_offset, committer_offset)
                 if is_new_branch:
                     repo.git.checkout(['-b', user_branch])
 
