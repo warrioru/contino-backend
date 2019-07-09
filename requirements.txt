@@ -5,3 +5,6 @@ pydriller
 apscheduler
 requests
 graphviz
+gunicorn
+dj-database-url
+whitenoise
