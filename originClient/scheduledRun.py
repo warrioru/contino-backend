@@ -24,7 +24,7 @@ def update_forecast():
             for branch in branches:
                 root.git.checkout(branch.reference.remote_head)
                 updated = root.git.status('-uno')
-                if "Your branch is behind" in updated:
+                if ("Your branch is behind" in updated) or ("have diverged" in updated):
                     root.git.pull()#TODO:check if this works
                     is_correct_response(root)
         except BaseException:
@@ -45,7 +45,7 @@ def is_correct_response(repo):
         parent_commit_id = repo.commit(commit).parents[0].hexsha
         current_branch = repo.active_branch.name
         parent_branch = repo.git.branch(['--contains', parent_commit_id]).replace("* ", "")#TODO: usar objeto git y no consola P.D: esto funciona?
-        email = 'origin'#TODO:check if this is ok.
+        email = 'origin@client'#TODO:check if this is ok.
         username = repo.commit(commit).author.name
         commit_id = repo.commit(commit).hexsha
         message = repo.commit(commit).message

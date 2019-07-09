@@ -62,7 +62,7 @@ class HomePageView(TemplateView):
                 self.parentCommitId = commit['parent_commit_id']
                 self.commitId = commit['commit_id']
                 #self.parentBranch = request.POST['parent_branch']
-                self.parentBranch = 'master' #Asumo q viene el branch de master, esto hay q borrar
+                #self.parentBranch = 'master' #Asumo q viene el branch de master, esto hay q borrar
                 self.currentBranch = commit['current_branch']
                 self.userEmail = commit['email']
                 self.username = commit['username']
@@ -106,6 +106,7 @@ class HomePageView(TemplateView):
             is_new_branch = False
             try:
                 repo.git.checkout(user_branch)
+                repo.git.reset('--hard', self.parentCommitId)
                 print("checkout " + user_branch)
             except GitCommandError:
                 #no branch found with that name, create branch
@@ -324,7 +325,8 @@ def graphTree(gitUrl, commitUser):#
     branches = repo.branches
     for branch in branches:
         user_email = branch.name.split('/')[0]
-        if "@" in user_email:
+        #if "@" in user_email:
+        if True:
             if user_email not in clients:
                 clients.append(user_email)
                 #g.node(user_email, shape='square')

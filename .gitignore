@@ -1,5 +1,6 @@
 .idea/
 gitProjects/
+gitOrigins/
 patches/
 db.sqlite3
 venv/
