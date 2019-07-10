@@ -2,7 +2,7 @@ $("#submitButton").on("click", function() {
     onClickSubmitButton();
 });
 function onClickSubmitButton() {
-    let urlGet = "http://localhost:8000/getDiff";
+    let urlGet = "https://contino-backend.herokuapp.com/getDiff";
     let commitUser = $("#commitUser").val();
     let commitTarget = $("#commitTarget").val();
     let gitUrl = $("#gitUrl").text();
