@@ -390,8 +390,8 @@ def graphTree(gitUrl, commitUser):#
 
     doc.unlink()
 
-    urlSVG = "http://localhost:8000/" + filename + ".svg"
-    urlHTML = "http://localhost:8000/" + filename + ".html"
+    urlSVG = "https://contino-backend.herokuapp.com/" + filename + ".svg"
+    urlHTML = "https://contino-backend.herokuapp.com/" + filename + ".html"
 
     f = open(filename + '.html','w+')
 
