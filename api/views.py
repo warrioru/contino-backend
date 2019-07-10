@@ -5,6 +5,7 @@ from .models import Bucketlist, Project
 from pydriller import *
 from git import *
 import re
+import os
 
 
 class CreateView(generics.ListCreateAPIView):
@@ -54,6 +55,8 @@ def create_repo(serializer):
         owner = result.group(1)
         result = re.search(owner + '/(.*).git',url)
         name = result.group(1)
+        if not os.path.exists(os.path.dirname('gitProjects')):
+            os.makedirs(os.path.dirname('gitProjects'))
         projectDir = './gitProjects/' + name + '/'
         originDir = './gitOrigins/' + name + '/'
         temp_repo = Repo.clone_from(url, projectDir)

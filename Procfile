@@ -1,1 +1,1 @@
-web: gunicorn helloapp.wsgi --log-file -
+web: bin/start-pgbouncer-stunnel gunicorn helloapp.wsgi --log-file -

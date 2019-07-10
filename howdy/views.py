@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.db.models import Q
+from django.db import close_old_connections
 import json
 from .forms import PatchForm
 from git import Commit as CommitGit
@@ -103,6 +104,7 @@ class HomePageView(TemplateView):
     def saveCommitInfo(self):
         commit = Commit(commitId = self.commitId, branchName = self.currentBranch, userEmail = self.userEmail, pathToPatch = self.pathToPatch)
         commit.save()
+        close_old_connections()
 
 
     def applyPatchToLocalRepo(self):
@@ -203,6 +205,7 @@ class HomePageView(TemplateView):
     def saveToMergeConflicts(self, commitId2, status, mergeDiffPath):
         mergeConflict = MergeConflicts(commitId1_id = self.commitId, commitId2 = commitId2, status = status, mergeDiffPath = mergeDiffPath)
         mergeConflict.save()
+        close_old_connections()
 
 
 # Add this view
